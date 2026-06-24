@@ -1,0 +1,9 @@
+SUPABASE_PROJECT_ID="gmxbgdnjnmxbkbaajgpi"
+SUPABASE_PUBLISHABLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdteGJnZG5qbm14YmtiYWFqZ3BpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMDQ2MjksImV4cCI6MjA5Nzc4MDYyOX0.a8KoOaiO-40xI4p8i5swsoNU0Jxc7gPaVabHkolzaQQ"
+SUPABASE_URL="https://gmxbgdnjnmxbkbaajgpi.supabase.co"
+VITE_SUPABASE_PROJECT_ID="gmxbgdnjnmxbkbaajgpi"
+VITE_SUPABASE_PUBLISHABLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdteGJnZG5qbm14YmtiYWFqZ3BpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMDQ2MjksImV4cCI6MjA5Nzc4MDYyOX0.a8KoOaiO-40xI4p8i5swsoNU0Jxc7gPaVabHkolzaQQ"
+VITE_SUPABASE_URL="https://gmxbgdnjnmxbkbaajgpi.supabase.co"
+
+# Get a free key at https://aistudio.google.com/app/apikey
+GEMINI_API_KEY=""
