@@ -98,7 +98,7 @@ function VoicePage() {
           Anime <span className="gradient-brand-text">Voice</span>
         </h1>
         <p className="text-muted-foreground mt-1">
-          Ketik sebuah kalimat (Bahasa Indonesia juga oke), pilih suara, lalu simpan ke library.
+          Ketik sebuah kalimat, pilih suara, lalu simpan ke library.
         </p>
       </div>
       <div className="glass rounded-3xl p-4 space-y-3">
