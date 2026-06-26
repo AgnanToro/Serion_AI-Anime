@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/lib/auth-context";
 import { chatService, type ChatThread, type ChatMessage } from "@/services/chatService";
-import { CHARACTERS, getCharacter, type Character } from "@/lib/characters";
+// import { CHARACTERS, getCharacter, type Character } from "@/lib/characters"; // pindah ke MySQL
+import { characterService, type Character } from "@/services/characterService";
 import { chatReply } from "@/lib/ai.functions";
 import { toast } from "sonner";
 
@@ -39,6 +40,7 @@ function writeThreadChars(userId: string, map: Record<string, string>) {
 function ChatPage() {
   const { user } = useAuth();
   const search = useSearch({ from: "/_authenticated/chat" });
+  const [characters, setCharacters] = useState<Character[]>([]);
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [active, setActive] = useState<ChatThread | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -46,6 +48,14 @@ function ChatPage() {
   const [thinking, setThinking] = useState(false);
   const [threadChars, setThreadChars] = useState<Record<string, string>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Load characters once
+  useEffect(() => {
+    characterService.list().then(setCharacters);
+  }, []);
+
+  const getCharacter = (id: string | null | undefined) =>
+    id ? characters.find((c) => c.id === id) : undefined;
 
   useEffect(() => {
     if (!user) return;
@@ -59,11 +69,11 @@ function ChatPage() {
     });
   }, [user, search.thread]);
 
-  // If ?c=<slug> is in the URL and we don't already have a chat for it, create one
+  // If ?c=<id> is in the URL, open or create a thread for that character
   useEffect(() => {
-    if (!user || !search.c) return;
-    const slug = search.c;
-    const existingId = Object.entries(threadChars).find(([, v]) => v === slug)?.[0];
+    if (!user || !search.c || characters.length === 0) return;
+    const charId = search.c;
+    const existingId = Object.entries(threadChars).find(([, v]) => v === charId)?.[0];
     if (existingId) {
       const t = threads.find((x) => x.id === existingId);
       if (t) {
@@ -71,18 +81,18 @@ function ChatPage() {
         return;
       }
     }
-    const ch = getCharacter(slug);
+    const ch = getCharacter(charId);
     if (!ch) return;
     (async () => {
       const t = await chatService.createThread(user.id, null, `Chat with ${ch.name}`);
-      const next = { ...threadChars, [t.id]: slug };
+      const next = { ...threadChars, [t.id]: charId };
       setThreadChars(next);
       writeThreadChars(user.id, next);
       setThreads((p) => [t, ...p]);
       setActive(t);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, search.c]);
+  }, [user, search.c, characters]);
 
   useEffect(() => {
     if (active) chatService.listMessages(active.id).then(setMessages);
@@ -93,16 +103,16 @@ function ChatPage() {
     scrollRef.current?.scrollTo({ top: 9e9 });
   }, [messages]);
 
-  async function newThread(slug: string | null = null) {
+  async function newThread(charId: string | null = null) {
     if (!user) return;
-    const ch = slug ? getCharacter(slug) : null;
+    const ch = charId ? getCharacter(charId) : null;
     const t = await chatService.createThread(
       user.id,
       null,
       ch ? `Chat with ${ch.name}` : "New Chat",
     );
-    if (slug) {
-      const next = { ...threadChars, [t.id]: slug };
+    if (charId) {
+      const next = { ...threadChars, [t.id]: charId };
       setThreadChars(next);
       writeThreadChars(user.id, next);
     }
@@ -125,7 +135,7 @@ function ChatPage() {
       const { content } = await chatReply({
         data: {
           character: ch
-            ? { name: ch.name, anime: ch.anime, description: ch.description, tags: ch.tags }
+            ? { name: ch.name, anime: ch.anime, description: ch.description ?? "", tags: ch.tags }
             : null,
           history,
         },
@@ -163,14 +173,18 @@ function ChatPage() {
             Start with
           </p>
           <div className="grid grid-cols-4 gap-1.5 mt-1.5">
-            {CHARACTERS.map((c) => (
+            {characters.map((c) => (
               <button
                 key={c.id}
                 onClick={() => newThread(c.id)}
                 title={`Chat with ${c.name}`}
                 className="aspect-square rounded-full overflow-hidden ring-1 ring-border hover:ring-brand transition"
               >
-                <img src={c.avatar_url} alt={c.name} className="h-full w-full object-cover" />
+                <img
+                  src={c.avatar_url ?? "/placeholder-avatar.svg"}
+                  alt={c.name}
+                  className="h-full w-full object-cover"
+                />
               </button>
             ))}
           </div>
@@ -212,7 +226,7 @@ function ChatPage() {
           <div className="flex items-center gap-3">
             {activeChar && (
               <img
-                src={activeChar.avatar_url}
+                src={activeChar.avatar_url ?? "/placeholder-avatar.svg"}
                 alt={activeChar.name}
                 className="h-8 w-8 rounded-full object-cover"
               />
@@ -297,7 +311,7 @@ function ChatPage() {
             <div className="absolute inset-0 aurora opacity-50 pointer-events-none" />
             <motion.img
               key={activeChar.id}
-              src={activeChar.avatar_url}
+              src={activeChar.avatar_url ?? "/placeholder-avatar.svg"}
               alt={activeChar.name}
               className="relative w-full h-full object-cover"
               animate={

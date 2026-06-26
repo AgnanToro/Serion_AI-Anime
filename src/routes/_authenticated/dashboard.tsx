@@ -3,8 +3,10 @@ import { ImageIcon, MessagesSquare, Mic, ArrowUpRight, Sparkles, Clock } from "l
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { CHARACTERS } from "@/lib/characters";
+// import { CHARACTERS } from "@/lib/characters"; // pindah ke MySQL via characterService
+import { characterService, type Character } from "@/services/characterService";
 import { chatService, type ChatThread } from "@/services/chatService";
+import { profileService } from "@/services/profileService";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -12,15 +14,20 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function Dashboard() {
   const { user } = useAuth();
-  const name =
-    user?.user_metadata?.display_name ??
-    user?.user_metadata?.username ??
-    user?.email?.split("@")[0];
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [displayName, setDisplayName] = useState<string>("");
   const [recent, setRecent] = useState<ChatThread[]>([]);
+
+  useEffect(() => {
+    characterService.list().then(setCharacters);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
     chatService.listThreads(user.id).then((t) => setRecent(t.slice(0, 4)));
+    profileService.get(user.id).then((p) => {
+      setDisplayName(p?.display_name ?? p?.username ?? user.email.split("@")[0]);
+    });
   }, [user]);
 
   const tiles = [
@@ -50,7 +57,7 @@ function Dashboard() {
               <Sparkles className="h-3 w-3" /> Welcome back
             </div>
             <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">
-              Hello, <span className="text-brand">{name}</span> ✨
+              Hello, <span className="text-brand">{displayName}</span> ✨
             </h1>
             <p className="text-muted-foreground mt-2 max-w-lg">
               Pick a companion and dive into a story, render anime artwork, or generate a voice line
@@ -72,10 +79,10 @@ function Dashboard() {
             </div>
           </div>
           <div className="hidden lg:flex -space-x-3">
-            {CHARACTERS.map((c) => (
+            {characters.map((c) => (
               <img
                 key={c.id}
-                src={c.avatar_url}
+                src={c.avatar_url ?? "/placeholder-avatar.svg"}
                 alt={c.name}
                 className="h-14 w-14 rounded-full object-cover ring-2 ring-background"
               />
@@ -115,7 +122,7 @@ function Dashboard() {
           </Link>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {CHARACTERS.map((c) => (
+          {characters.map((c) => (
             <Link
               key={c.id}
               to="/chat"
@@ -124,7 +131,7 @@ function Dashboard() {
             >
               <div className="aspect-[3/4] overflow-hidden">
                 <img
-                  src={c.avatar_url}
+                  src={c.avatar_url ?? "/placeholder-avatar.svg"}
                   alt={c.name}
                   className="h-full w-full object-cover group-hover:scale-105 transition duration-500"
                 />

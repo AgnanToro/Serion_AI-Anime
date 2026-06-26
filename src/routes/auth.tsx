@@ -10,6 +10,7 @@ import { Logo } from "@/components/serion/Logo";
 import { ThemeToggle } from "@/components/serion/ThemeToggle";
 import { authService } from "@/services/authService";
 import { useAuth } from "@/lib/auth-context";
+import type { AuthUser } from "@/services/authService";
 import { MessagesSquare, ImageIcon, Mic } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
@@ -117,6 +118,7 @@ function AuthPage() {
 
 function SignInForm() {
   const navigate = useNavigate();
+  const { setUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -126,9 +128,11 @@ function SignInForm() {
       onSubmit={async (e) => {
         e.preventDefault();
         setBusy(true);
-        const { error } = await authService.signIn(email, password);
+        const { user, error } = await authService.signIn(email, password);
         setBusy(false);
         if (error) return toast.error(error.message);
+        // Update context SEBELUM navigate agar route guard tidak redirect balik ke /auth
+        setUser(user as AuthUser);
         toast.success("Welcome back!");
         navigate({ to: "/dashboard" });
       }}
@@ -166,6 +170,7 @@ function SignInForm() {
 
 function SignUpForm() {
   const navigate = useNavigate();
+  const { setUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -176,12 +181,14 @@ function SignUpForm() {
       onSubmit={async (e) => {
         e.preventDefault();
         setBusy(true);
-        const { error } = await authService.signUp(email, password, {
+        const { user, error } = await authService.signUp(email, password, {
           username,
           display_name: username,
         });
         setBusy(false);
         if (error) return toast.error(error.message);
+        // Update context SEBELUM navigate
+        setUser(user as AuthUser);
         toast.success("Account created. Welcome to SERION!");
         navigate({ to: "/dashboard" });
       }}

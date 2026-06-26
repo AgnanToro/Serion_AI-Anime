@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("MYSQL_DATABASE_URL")
+}
+
+enum AppRole {
+  admin
+  user
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
+}
+
+enum ThemePref {
+  dark
+  light
+  system
+}
+
+// ── Custom Auth (menggantikan Supabase Auth) ──────────────────────────────────
+model User {
+  id           String   @id @default(uuid()) @db.Char(36)
+  email        String   @unique @db.VarChar(191)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Profile {
+  id          String   @id @db.Char(36)
+  username    String?  @unique @db.VarChar(191)
+  displayName String?  @map("display_name") @db.VarChar(191)
+  avatarUrl   String?  @map("avatar_url") @db.VarChar(2048)
+  bio         String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("profiles")
+}
+
+model UserRole {
+  id        String   @id @default(uuid()) @db.Char(36)
+  userId    String   @map("user_id") @db.Char(36)
+  role      AppRole  @default(user)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, role])
+  @@map("user_roles")
+}
+
+model UserSettings {
+  userId               String    @id @map("user_id") @db.Char(36)
+  theme                ThemePref @default(dark)
+  preferredCharacterId String?   @map("preferred_character") @db.Char(36)
+  language             String    @default("en") @db.VarChar(16)
+  notificationsEnabled Boolean   @default(true) @map("notifications_enabled")
+  emailNotifications   Boolean   @default(true) @map("email_notifications")
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@map("user_settings")
+}
+
+model Character {
+  id          String   @id @default(uuid()) @db.Char(36)
+  name        String   @db.VarChar(191)
+  anime       String   @db.VarChar(191)
+  description String?  @db.Text
+  tags        Json?
+  avatarUrl   String?  @map("avatar_url") @db.VarChar(2048)
+  accentColor String?  @map("accent_color") @db.VarChar(32)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  favorites Favorite[]
+  threads   ChatThread[]
+
+  @@map("characters")
+}
+
+model Favorite {
+  id          String   @id @default(uuid()) @db.Char(36)
+  userId      String   @map("user_id") @db.Char(36)
+  characterId String   @map("character_id") @db.Char(36)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, characterId])
+  @@index([userId])
+  @@map("favorites")
+}
+
+model ChatThread {
+  id          String   @id @default(uuid()) @db.Char(36)
+  userId      String   @map("user_id") @db.Char(36)
+  characterId String?  @map("character_id") @db.Char(36)
+  title       String   @default("New Chat") @db.VarChar(191)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  character Character?   @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  messages  ChatMessage[]
+
+  @@index([userId, updatedAt])
+  @@map("chat_threads")
+}
+
+model ChatMessage {
+  id        String      @id @default(uuid()) @db.Char(36)
+  threadId  String      @map("thread_id") @db.Char(36)
+  userId    String      @map("user_id") @db.Char(36)
+  role      MessageRole
+  content   String      @db.Text
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@map("chat_messages")
+}
+
+model GeneratedImage {
+  id         String   @id @default(uuid()) @db.Char(36)
+  userId     String   @map("user_id") @db.Char(36)
+  prompt     String   @db.Text
+  imageUrl   String?  @map("image_url") @db.LongText
+  style      String?  @db.VarChar(191)
+  isFavorite Boolean  @default(false) @map("is_favorite")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@map("generated_images")
+}
+
+model GeneratedVoice {
+  id         String   @id @default(uuid()) @db.Char(36)
+  userId     String   @map("user_id") @db.Char(36)
+  text       String   @db.Text
+  audioUrl   String?  @map("audio_url") @db.VarChar(2048)
+  voiceStyle String?  @map("voice_style") @db.VarChar(191)
+  durationMs Int?     @map("duration_ms")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@map("generated_voices")
+}
+
+model PromptLibrary {
+  id         String   @id @default(uuid()) @db.Char(36)
+  userId     String   @map("user_id") @db.Char(36)
+  category   String   @default("general") @db.VarChar(191)
+  title      String   @db.VarChar(191)
+  prompt     String   @db.Text
+  isFavorite Boolean  @default(false) @map("is_favorite")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([userId, updatedAt])
+  @@map("prompt_library")
+}
+
+model ApiLog {
+  id        String   @id @default(uuid()) @db.Char(36)
+  userId    String?  @map("user_id") @db.Char(36)
+  endpoint  String   @db.VarChar(191)
+  status    Int?
+  meta      Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@map("api_logs")
+}

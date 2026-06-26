@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import { Heart, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Character } from "@/lib/characters";
+// import type { Character } from "@/lib/characters"; // dipindah ke characterService
+import type { Character } from "@/services/characterService";
 
 export function CharacterCard({
   c,
@@ -23,7 +24,7 @@ export function CharacterCard({
       <div className="relative">
         <div className="aspect-[3/4] overflow-hidden">
           <img
-            src={c.avatar_url}
+            src={c.avatar_url ?? "/placeholder-avatar.svg"}
             alt={c.name}
             className="h-full w-full object-cover group-hover:scale-105 transition duration-500"
           />

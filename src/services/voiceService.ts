@@ -1,4 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 
 export type GeneratedVoice = {
   id: string;
@@ -10,32 +11,74 @@ export type GeneratedVoice = {
   created_at: string;
 };
 
+const UserIdInput = z.object({
+  userId: z.string().min(1),
+});
+
+const CreateVoiceInput = z.object({
+  userId: z.string().min(1),
+  text: z.string().min(1),
+  audioUrl: z.string().min(1),
+  voiceStyle: z.string().optional(),
+});
+
+const IdInput = z.object({
+  id: z.string().min(1),
+});
+
+const listFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => UserIdInput.parse(data))
+  .handler(async ({ data }) => {
+    const { mysqlRepositories } = await import("@/server/mysql/repositories");
+    const rows = await mysqlRepositories.voice.list(data.userId);
+    return rows.map((row) => ({
+      id: row.id,
+      user_id: row.userId,
+      text: row.text,
+      audio_url: row.audioUrl,
+      voice_style: row.voiceStyle,
+      duration_ms: row.durationMs,
+      created_at: row.createdAt.toISOString(),
+    })) as GeneratedVoice[];
+  });
+
+const createFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => CreateVoiceInput.parse(data))
+  .handler(async ({ data }) => {
+    const { mysqlRepositories } = await import("@/server/mysql/repositories");
+    const row = await mysqlRepositories.voice.create(
+      data.userId,
+      data.text,
+      data.audioUrl,
+      data.voiceStyle,
+    );
+    return {
+      id: row.id,
+      user_id: row.userId,
+      text: row.text,
+      audio_url: row.audioUrl,
+      voice_style: row.voiceStyle,
+      duration_ms: row.durationMs,
+      created_at: row.createdAt.toISOString(),
+    } satisfies GeneratedVoice;
+  });
+
+const removeFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => IdInput.parse(data))
+  .handler(async ({ data }) => {
+    const { mysqlRepositories } = await import("@/server/mysql/repositories");
+    await mysqlRepositories.voice.remove(data.id);
+    return { ok: true };
+  });
+
 export const voiceService = {
   async list(userId: string) {
-    const { data, error } = await supabase
-      .from("generated_voices")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return (data ?? []) as GeneratedVoice[];
+    return listFn({ data: { userId } });
   },
   async create(userId: string, text: string, audioUrl: string, voice_style?: string) {
-    const { data, error } = await supabase
-      .from("generated_voices")
-      .insert({
-        user_id: userId,
-        text,
-        voice_style,
-        audio_url: audioUrl,
-        duration_ms: Math.min(text.length * 60, 30000),
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return data as GeneratedVoice;
+    return createFn({ data: { userId, text, audioUrl, voiceStyle: voice_style } });
   },
   async remove(id: string) {
-    await supabase.from("generated_voices").delete().eq("id", id);
+    await removeFn({ data: { id } });
   },
 };

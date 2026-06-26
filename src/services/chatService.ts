@@ -1,4 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 
 export type ChatThread = {
   id: string;
@@ -8,6 +9,104 @@ export type ChatThread = {
   created_at: string;
   updated_at: string;
 };
+
+const ThreadInput = z.object({
+  userId: z.string().min(1),
+  characterId: z.string().min(1).nullable(),
+  title: z.string().min(1).default("New Chat"),
+});
+
+const AddMessageInput = z.object({
+  userId: z.string().min(1),
+  threadId: z.string().min(1),
+  role: z.enum(["user", "assistant", "system"]),
+  content: z.string().min(1),
+});
+
+const ThreadIdInput = z.object({
+  threadId: z.string().min(1),
+});
+
+const UserIdInput = z.object({
+  userId: z.string().min(1),
+});
+
+const listThreadsFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => UserIdInput.parse(data))
+  .handler(async ({ data }) => {
+    const { mysqlRepositories } = await import("@/server/mysql/repositories");
+    const rows = await mysqlRepositories.chat.listThreads(data.userId);
+    return rows.map((row) => ({
+      id: row.id,
+      user_id: row.userId,
+      character_id: row.characterId,
+      title: row.title,
+      created_at: row.createdAt.toISOString(),
+      updated_at: row.updatedAt.toISOString(),
+    })) as ChatThread[];
+  });
+
+const createThreadFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => ThreadInput.parse(data))
+  .handler(async ({ data }) => {
+    const { mysqlRepositories } = await import("@/server/mysql/repositories");
+    const row = await mysqlRepositories.chat.createThread(
+      data.userId,
+      data.characterId,
+      data.title,
+    );
+    return {
+      id: row.id,
+      user_id: row.userId,
+      character_id: row.characterId,
+      title: row.title,
+      created_at: row.createdAt.toISOString(),
+      updated_at: row.updatedAt.toISOString(),
+    } satisfies ChatThread;
+  });
+
+const listMessagesFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => ThreadIdInput.parse(data))
+  .handler(async ({ data }) => {
+    const { mysqlRepositories } = await import("@/server/mysql/repositories");
+    const rows = await mysqlRepositories.chat.listMessages(data.threadId);
+    return rows.map((row) => ({
+      id: row.id,
+      thread_id: row.threadId,
+      user_id: row.userId,
+      role: row.role,
+      content: row.content,
+      created_at: row.createdAt.toISOString(),
+    })) as ChatMessage[];
+  });
+
+const addMessageFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => AddMessageInput.parse(data))
+  .handler(async ({ data }) => {
+    const { mysqlRepositories } = await import("@/server/mysql/repositories");
+    const row = await mysqlRepositories.chat.addMessage(
+      data.userId,
+      data.threadId,
+      data.role,
+      data.content,
+    );
+    return {
+      id: row.id,
+      thread_id: row.threadId,
+      user_id: row.userId,
+      role: row.role,
+      content: row.content,
+      created_at: row.createdAt.toISOString(),
+    } satisfies ChatMessage;
+  });
+
+const deleteThreadFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => ThreadIdInput.parse(data))
+  .handler(async ({ data }) => {
+    const { mysqlRepositories } = await import("@/server/mysql/repositories");
+    await mysqlRepositories.chat.deleteThread(data.threadId);
+    return { ok: true };
+  });
 
 export type ChatMessage = {
   id: string;
@@ -20,46 +119,18 @@ export type ChatMessage = {
 
 export const chatService = {
   async listThreads(userId: string) {
-    const { data, error } = await supabase
-      .from("chat_threads")
-      .select("*")
-      .eq("user_id", userId)
-      .order("updated_at", { ascending: false });
-    if (error) throw error;
-    return (data ?? []) as ChatThread[];
+    return listThreadsFn({ data: { userId } });
   },
   async createThread(userId: string, characterId: string | null, title = "New Chat") {
-    const { data, error } = await supabase
-      .from("chat_threads")
-      .insert({ user_id: userId, character_id: characterId, title })
-      .select()
-      .single();
-    if (error) throw error;
-    return data as ChatThread;
+    return createThreadFn({ data: { userId, characterId, title } });
   },
   async listMessages(threadId: string) {
-    const { data, error } = await supabase
-      .from("chat_messages")
-      .select("*")
-      .eq("thread_id", threadId)
-      .order("created_at", { ascending: true });
-    if (error) throw error;
-    return (data ?? []) as ChatMessage[];
+    return listMessagesFn({ data: { threadId } });
   },
   async addMessage(userId: string, threadId: string, role: ChatMessage["role"], content: string) {
-    const { data, error } = await supabase
-      .from("chat_messages")
-      .insert({ user_id: userId, thread_id: threadId, role, content })
-      .select()
-      .single();
-    if (error) throw error;
-    await supabase
-      .from("chat_threads")
-      .update({ updated_at: new Date().toISOString() })
-      .eq("id", threadId);
-    return data as ChatMessage;
+    return addMessageFn({ data: { userId, threadId, role, content } });
   },
   async deleteThread(threadId: string) {
-    await supabase.from("chat_threads").delete().eq("id", threadId);
+    await deleteThreadFn({ data: { threadId } });
   },
 };

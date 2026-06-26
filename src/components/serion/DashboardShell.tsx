@@ -10,12 +10,13 @@ import {
   LogOut,
   Menu,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { authService } from "@/services/authService";
-import { CHARACTERS } from "@/lib/characters";
+import { useAuth } from "@/lib/auth-context";
+// import { CHARACTERS } from "@/lib/characters"; // pindah ke MySQL via characterService
+import { characterService, type Character } from "@/services/characterService";
 
 const items = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -30,10 +31,16 @@ const items = [
 export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
+  const { onSignOut } = useAuth();
   const [open, setOpen] = useState(false);
+  const [characters, setCharacters] = useState<Character[]>([]);
 
-  async function handleLogout() {
-    await authService.signOut();
+  useEffect(() => {
+    characterService.list().then(setCharacters);
+  }, []);
+
+  function handleLogout() {
+    onSignOut();
     navigate({ to: "/", replace: true });
   }
 
@@ -76,29 +83,25 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           </p>
         </div>
         <div className="px-3 space-y-1 flex-1">
-          {CHARACTERS.map((c) => {
-            const target = `/chat?c=${c.id}`;
-            return (
-              <Link
-                key={c.id}
-                to="/chat"
-                search={{ c: c.id } as never}
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 rounded-xl px-2 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent transition"
-                title={target}
-              >
-                <img
-                  src={c.avatar_url}
-                  alt={c.name}
-                  className="h-8 w-8 rounded-full object-cover ring-1 ring-border"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{c.name}</p>
-                  <p className="truncate text-[10px] text-muted-foreground">{c.anime}</p>
-                </div>
-              </Link>
-            );
-          })}
+          {characters.map((c) => (
+            <Link
+              key={c.id}
+              to="/chat"
+              search={{ c: c.id } as never}
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-xl px-2 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent transition"
+            >
+              <img
+                src={c.avatar_url ?? "/placeholder-avatar.svg"}
+                alt={c.name}
+                className="h-8 w-8 rounded-full object-cover ring-1 ring-border"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{c.name}</p>
+                <p className="truncate text-[10px] text-muted-foreground">{c.anime}</p>
+              </div>
+            </Link>
+          ))}
         </div>
         <div className="p-3 border-t border-sidebar-border space-y-1">
           <Button

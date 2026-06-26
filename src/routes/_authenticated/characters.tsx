@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { CHARACTERS } from "@/lib/characters";
-import { characterService } from "@/services/characterService";
+// import { CHARACTERS } from "@/lib/characters"; // pindah ke MySQL via characterService
+import { characterService, type Character } from "@/services/characterService";
 import { useAuth } from "@/lib/auth-context";
 import { CharacterCard } from "@/components/serion/CharacterCard";
 
@@ -12,7 +12,12 @@ export const Route = createFileRoute("/_authenticated/characters")({
 function CharactersPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [characters, setCharacters] = useState<Character[]>([]);
   const [favs, setFavs] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    characterService.list().then(setCharacters);
+  }, []);
 
   useEffect(() => {
     if (user) characterService.favorites(user.id).then(setFavs);
@@ -37,7 +42,7 @@ function CharactersPage() {
         <p className="text-muted-foreground mt-1">Pick a character to chat with.</p>
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {CHARACTERS.map((c) => (
+        {characters.map((c) => (
           <CharacterCard
             key={c.id}
             c={c}

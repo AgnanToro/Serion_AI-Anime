@@ -20,6 +20,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedCharactersRouteImport } from './routes/_authenticated/characters'
 import { Route as AuthenticatedArtRouteImport } from './routes/_authenticated/art'
+import { Route as ApiMysqlHealthRouteImport } from './routes/api/mysql/health'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -75,6 +76,11 @@ const AuthenticatedArtRoute = AuthenticatedArtRouteImport.update({
   path: '/art',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiMysqlHealthRoute = ApiMysqlHealthRouteImport.update({
+  id: '/api/mysql/health',
+  path: '/api/mysql/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/voice': typeof AuthenticatedVoiceRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
+  '/api/mysql/health': typeof ApiMysqlHealthRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/voice': typeof AuthenticatedVoiceRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
+  '/api/mysql/health': typeof ApiMysqlHealthRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/voice': typeof AuthenticatedVoiceRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
+  '/api/mysql/health': typeof ApiMysqlHealthRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/voice'
     | '/api/generate-image'
+    | '/api/mysql/health'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/voice'
     | '/api/generate-image'
+    | '/api/mysql/health'
   id:
     | '__root__'
     | '/'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/voice'
     | '/api/generate-image'
+    | '/api/mysql/health'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -159,6 +171,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ApiGenerateImageRoute: typeof ApiGenerateImageRoute
+  ApiMysqlHealthRoute: typeof ApiMysqlHealthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -240,6 +253,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedArtRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/mysql/health': {
+      id: '/api/mysql/health'
+      path: '/api/mysql/health'
+      fullPath: '/api/mysql/health'
+      preLoaderRoute: typeof ApiMysqlHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -271,6 +291,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ApiGenerateImageRoute: ApiGenerateImageRoute,
+  ApiMysqlHealthRoute: ApiMysqlHealthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
